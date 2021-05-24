@@ -216,6 +216,7 @@
     "webpack-bundle-analyzer": "^3.6.1",
     "webpack-cli": "3.3.0",
     "webpack-dev-middleware": "3.6.2",
+    "webpack-dev-server": "^3.0.0",
     "webpack-hot-middleware": "2.24.3"
   }
 }
