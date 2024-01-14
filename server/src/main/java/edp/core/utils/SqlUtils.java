@@ -235,7 +235,11 @@ public class SqlUtils {
             if (this.dataTypeEnum == MYSQL) {
                 sql = sql + " LIMIT " + startRow + ", " + pageSize;
                 getResultForPaginate(sql, paginateWithQueryColumns, jdbcTemplate, excludeColumns, -1);
-            } else {
+            } else if (this.dataTypeEnum == KYLIN) {
+                sql = sql + " LIMIT " + pageSize + " OFFSET "+ startRow;
+                getResultForPaginate(sql, paginateWithQueryColumns, jdbcTemplate, excludeColumns, -1);
+            }
+            else {
                 getResultForPaginate(sql, paginateWithQueryColumns, jdbcTemplate, excludeColumns, startRow);
             }
         }
@@ -442,9 +446,15 @@ public class SqlUtils {
                 dbList.add(catalog);
             } else {
                 DatabaseMetaData metaData = connection.getMetaData();
-                ResultSet rs = metaData.getCatalogs();
-                while (rs.next()) {
-                    dbList.add(rs.getString(1));
+                ResultSet rs = null;
+                if (dataTypeEnum == HIVE2)
+                    rs = metaData.getSchemas();
+                else
+                    rs = metaData.getCatalogs();
+                if (rs != null) {
+                    while (rs.next()) {
+                        dbList.add(rs.getString(1));
+                    }
                 }
             }
 
@@ -478,7 +488,10 @@ public class SqlUtils {
             DatabaseMetaData metaData = connection.getMetaData();
             String schema = null;
             try {
-                schema = metaData.getConnection().getSchema();
+                if (dataTypeEnum == HIVE2)
+                    schema = dbName;
+                else
+                    schema = metaData.getConnection().getSchema();
             } catch (Throwable t) {
                 // ignore
             }
@@ -527,6 +540,7 @@ public class SqlUtils {
                 schemaPattern = "dbo";
                 break;
             case CLICKHOUSE:
+            case HIVE2:
             case PRESTO:
                 if (!StringUtils.isEmpty(schema)) {
                     schemaPattern = schema;
@@ -1069,9 +1083,18 @@ public class SqlUtils {
         return this.jdbcSourceInfo.getJdbcUrl();
     }
 
-    public static String formatSql(String sql) {
+    public String formatSql(String sql) {
         try {
-            return SQLUtils.formatMySql(sql);
+            switch (dataTypeEnum) {
+                case ORACLE:
+                    return SQLUtils.formatOracle(sql);
+                case MYSQL:
+                    return SQLUtils.formatMySql(sql);
+                case HIVE2:
+                    return SQLUtils.formatHive(sql);
+                default:
+                    return sql;
+            }
         } catch (Exception e) {
             // ignore
         }
